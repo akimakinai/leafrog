@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::{CollisionLayer, GameState};
+use crate::{CollisionLayer, GameState, InGameTag};
 
 use super::Rotation;
 use bevy::{prelude::*, render::render_resource::FilterMode};
@@ -89,6 +89,7 @@ pub fn spawn_leaf<'w, 's, 'a>(
         Collisions::default(),
         CollisionLayers::all_masks::<CollisionLayer>().with_group(CollisionLayer::Leaf),
     ));
+    e.insert(InGameTag);
     e
 }
 
@@ -141,7 +142,7 @@ fn leaf_decay_system(
             if pre < 0.8 && x.decay >= 0.8 {
                 leaf_drop = true;
             }
-            if x.restore_timer.is_none() && x.decay >= 1.0 {
+            if x.decay >= 1.0 {
                 x.restore_timer = Some(Timer::new(Duration::from_secs(5), false));
             }
         }

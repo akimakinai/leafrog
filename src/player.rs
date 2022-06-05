@@ -9,6 +9,7 @@ use leafwing_input_manager::prelude::*;
 use std::f32;
 
 use crate::enemy::EnemyKillEvent;
+use crate::state_transition::StateTransitionEvent;
 use crate::{CollisionLayer, GameState, InGameTag, MainCamera};
 
 use super::Rotation;
@@ -545,24 +546,27 @@ fn tongue_system(
 
 fn detect_drown(
     landing: EventReader<LandingEvent>,
-    q: Query<(&Player, &Transform, &Collisions)>,
+    q: Query<(&Player, &Collisions)>,
     leafs: Query<&Leaf>,
     mut commands: Commands,
+    tran: EventReader<StateTransitionEvent<GameState>>,
 ) {
-    let (player, transform, collisions) = q.single();
+    let (player, collisions) = q.single();
 
-    if player.jumping && landing.len() == 0 {
+    if player.jumping && landing.is_empty() {
         return;
     }
+
+    // Collisions may not be updated at this time.
+    // `update_collisions_system` is private so we can't add scheduling constraint.
+    let is_first_frame = !tran.is_empty();
 
     if collisions
         .entities()
         .any(|e| leafs.get(e).unwrap().decay >= 1.0)
     {
         commands.insert_resource(NextState(GameState::GameOver));
-    } else if collisions.entities().count() == 0
-        && transform.translation.truncate() != Vec2::new(0., 0.)
-    {
+    } else if collisions.entities().count() == 0 && !is_first_frame {
         commands.insert_resource(NextState(GameState::GameOver));
     }
 }
