@@ -74,7 +74,7 @@ fn control(
         return;
     }
 
-    if buttons.just_pressed(MouseButton::Left) || keys.just_pressed(KeyCode::Space) {
+    if buttons.just_released(MouseButton::Left) || keys.just_released(KeyCode::Space) {
         commands.insert_resource(NextState(GameState::Title));
     }
 }

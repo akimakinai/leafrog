@@ -88,7 +88,7 @@ fn frog_scale(mut frog: Query<&mut Transform, With<Frog>>, time: Res<Time>) {
 }
 
 fn control(mut commands: Commands, buttons: Res<Input<MouseButton>>, keys: Res<Input<KeyCode>>) {
-    if buttons.just_pressed(MouseButton::Left) || keys.just_pressed(KeyCode::Space) {
+    if buttons.just_released(MouseButton::Left) || keys.just_released(KeyCode::Space) {
         commands.insert_resource(NextState(GameState::InGame));
     }
 }
