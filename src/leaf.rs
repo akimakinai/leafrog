@@ -121,9 +121,7 @@ fn leaf_decay_system(
     leaf.for_each_mut(|(mut x, mut sprite)| {
         if let Some(timer) = x.restore_timer.as_mut() {
             timer.tick(time.delta());
-        }
 
-        if let Some(timer) = x.restore_timer.as_ref() {
             if timer.finished() {
                 x.decay = 0.0;
                 x.restore_timer = None;
