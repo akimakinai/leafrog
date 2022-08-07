@@ -74,14 +74,14 @@ fn startup(mut commands: Commands, assets: Res<PlayerAssets>) {
         .insert_bundle(InputManagerBundle::<PlayerAction> {
             action_state: ActionState::default(),
             input_map: InputMap::new([
-                (PlayerAction::Up, KeyCode::Up),
-                (PlayerAction::Up, KeyCode::W),
-                (PlayerAction::Down, KeyCode::Down),
-                (PlayerAction::Down, KeyCode::S),
-                (PlayerAction::Left, KeyCode::Left),
-                (PlayerAction::Left, KeyCode::A),
-                (PlayerAction::Right, KeyCode::Right),
-                (PlayerAction::Right, KeyCode::D),
+                (KeyCode::Up, PlayerAction::Up),
+                (KeyCode::W, PlayerAction::Up),
+                (KeyCode::Down, PlayerAction::Down),
+                (KeyCode::S, PlayerAction::Down),
+                (KeyCode::Left, PlayerAction::Left),
+                (KeyCode::A, PlayerAction::Left),
+                (KeyCode::Right, PlayerAction::Right),
+                (KeyCode::D, PlayerAction::Right),
             ]),
         })
         .insert_bundle((
@@ -308,7 +308,7 @@ fn jump_system(
                         end: Vec3::ONE,
                     },
                 )
-                .with_completed_event(true, 0),
+                .with_completed_event(0),
             ),
             Sequence::new([Tween::new(
                 EaseFunction::QuadraticInOut,
@@ -495,7 +495,7 @@ fn tongue_system(
                         end: TONGUE_LEN_DEFAULT.min(tongue.length),
                     },
                 )
-                .with_completed_event(true, 1);
+                .with_completed_event(1);
                 commands.entity(tongue_entity).insert(Animator::new(tween));
 
                 tongue.extending = false;
@@ -516,7 +516,7 @@ fn tongue_system(
         visibility.get_mut(tongue_entity).unwrap().is_visible = true;
 
         if let Some(mouse_pos) = mouse_pos.0 {
-            let length = mouse_pos.distance(g_tr.translation.truncate()) - 32.0;
+            let length = mouse_pos.distance(g_tr.translation().truncate()) - 32.0;
 
             let tween = Tween::new(
                 EaseFunction::QuarticInOut,
@@ -527,14 +527,14 @@ fn tongue_system(
                     end: length,
                 },
             )
-            .with_completed_event(true, 0);
+            .with_completed_event(0);
             commands.entity(tongue_entity).insert(Animator::new(tween));
 
             tongue.extending = true;
 
             let player_rot = transform.get(player_entity).unwrap().rotation;
 
-            let to_mouse = mouse_pos - g_tr.translation.truncate();
+            let to_mouse = mouse_pos - g_tr.translation().truncate();
 
             // player rotation will be applied, hence multiplication by the inverse of it
             transform.get_mut(tongue_entity).unwrap().rotation =

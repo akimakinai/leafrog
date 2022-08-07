@@ -38,23 +38,23 @@ fn setup_gameover(
         .spawn_bundle(TextBundle {
             style: Style {
                 size: Size::new(Val::Percent(50.0), Val::Px(0.)),
-                margin: Rect::all(Val::Auto),
+                margin: UiRect::all(Val::Auto),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 ..default()
             },
-            text: Text::with_section(
+            text: Text::from_section(
                 "GAMEOVER",
                 TextStyle {
                     font: game_assets.font.clone(),
                     font_size: 150.0,
                     color: Color::SEA_GREEN,
                 },
-                TextAlignment {
-                    vertical: VerticalAlign::Center,
-                    horizontal: HorizontalAlign::Center,
-                },
-            ),
+            )
+            .with_alignment(TextAlignment {
+                vertical: VerticalAlign::Center,
+                horizontal: HorizontalAlign::Center,
+            }),
             ..default()
         })
         .insert(GameOverTag);

@@ -69,7 +69,7 @@ impl Plugin for GamePlugin {
             .add_startup_system(startup);
 
         app.add_audio_channel::<BGMTrack>()
-            .add_system(bevy::input::system::exit_on_esc_system)
+            .add_system(bevy::window::close_on_esc)
             .init_resource::<MousePos>()
             .init_resource::<GameAssets>()
             .add_system(my_cursor_system)
@@ -106,9 +106,8 @@ impl FromWorld for GameAssets {
 fn startup(mut commands: Commands, mut windows: ResMut<Windows>) {
     windows.primary_mut().set_resizable(false);
     commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .spawn_bundle(Camera2dBundle::default())
         .insert(MainCamera);
-    commands.spawn_bundle(UiCameraBundle::default());
 }
 
 #[derive(Component)]
@@ -151,6 +150,7 @@ fn ingame_startup(
             GlobalTransform::default(),
             Transform::default(),
         ))
+        .insert_bundle(VisibilityBundle::default())
         .insert(InGameTag)
         .push_children(&leaves);
 
@@ -159,7 +159,7 @@ fn ingame_startup(
             style: Style {
                 align_self: AlignSelf::FlexEnd,
                 position_type: PositionType::Absolute,
-                position: Rect {
+                position: UiRect {
                     bottom: Val::Px(5.0),
                     right: Val::Px(15.0),
                     ..default()
@@ -167,14 +167,13 @@ fn ingame_startup(
                 ..default()
             },
             // Use the `Text::with_section` constructor
-            text: Text::with_section(
+            text: Text::from_section(
                 "Score: 0",
                 TextStyle {
                     font: assets.font.clone(),
                     font_size: 40.0,
                     color: Color::SEA_GREEN,
                 },
-                default(),
             ),
             ..default()
         })
@@ -235,7 +234,7 @@ fn my_cursor_system(
         let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
 
         // matrix for undoing the projection and camera transform
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix.inverse();
+        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
 
         // use it to convert ndc to world-space coordinates
         let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));

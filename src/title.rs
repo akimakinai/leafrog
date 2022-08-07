@@ -38,7 +38,7 @@ fn setup_title(
             style: Style {
                 align_self: AlignSelf::FlexEnd,
                 position_type: PositionType::Absolute,
-                position: Rect {
+                position: UiRect {
                     bottom: Val::Px(5.0),
                     right: Val::Px(15.0),
                     ..default()
@@ -46,7 +46,7 @@ fn setup_title(
                 ..default()
             },
             // Use the `Text::with_section` constructor
-            text: Text::with_section(
+            text: Text::from_section(
                 // Accepts a `String` or any type that converts into a `String`, such as `&str`
                 "LEAFROG",
                 TextStyle {
@@ -54,12 +54,11 @@ fn setup_title(
                     font_size: 150.0,
                     color: Color::SEA_GREEN,
                 },
-                // Note: You can use `Default::default()` in place of the `TextAlignment`
-                TextAlignment {
-                    horizontal: HorizontalAlign::Center,
-                    ..default()
-                },
-            ),
+            )
+            .with_alignment(TextAlignment {
+                horizontal: HorizontalAlign::Center,
+                ..default()
+            }),
             ..default()
         })
         .insert(Title);

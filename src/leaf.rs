@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{CollisionLayer, GameState};
 
 use super::Rotation;
-use bevy::{prelude::*, render::render_resource::FilterMode};
+use bevy::{prelude::*};
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
 use bevy_kira_audio::{Audio, AudioSource, InstanceHandle};
 use heron::prelude::*;
@@ -21,7 +21,7 @@ impl Plugin for LeafPlugin {
         app.init_resource::<LeafAsset>().add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(set_texture_filters_to_nearest)
+                // .with_system(set_texture_filters_to_nearest)
                 .with_system(leaf_decay_system)
                 .with_system(leaf_rotator)
                 .into(),
@@ -29,14 +29,14 @@ impl Plugin for LeafPlugin {
     }
 }
 
-fn set_texture_filters_to_nearest(mut textures: ResMut<Assets<Image>>, leaf_asset: Res<LeafAsset>) {
-    if let Some(mut texture) = textures.get_mut(leaf_asset.texture.clone()) {
-        if texture.sampler_descriptor.mag_filter != FilterMode::Linear {
-            texture.sampler_descriptor.mag_filter = FilterMode::Linear;
-            texture.sampler_descriptor.min_filter = FilterMode::Linear;
-        }
-    }
-}
+// fn set_texture_filters_to_nearest(mut textures: ResMut<Assets<Image>>, leaf_asset: Res<LeafAsset>) {
+//     if let Some(mut texture) = textures.get_mut(&leaf_asset.texture) {
+//         if texture.sampler_descriptor.mag_filter != FilterMode::Linear {
+//             texture.sampler_descriptor.mag_filter = FilterMode::Linear;
+//             texture.sampler_descriptor.min_filter = FilterMode::Linear;
+//         }
+//     }
+// }
 
 pub struct LeafAsset {
     texture: Handle<Image>,
