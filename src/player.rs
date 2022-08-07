@@ -359,7 +359,8 @@ struct TongueBundle {
     rotation: Rotation,
     transform: Transform,
     global_transform: GlobalTransform,
-    visibility: Visibility,
+    #[bundle]
+    visibility: VisibilityBundle,
 }
 
 const TONGUE_LEN_DEFAULT: f32 = 32.;
@@ -375,7 +376,10 @@ impl TongueBundle {
                 extending: false,
             },
             rotation: default(),
-            visibility: Visibility { is_visible: false },
+            visibility: VisibilityBundle {
+                visibility: Visibility { is_visible: false },
+                computed: default(),
+            },
             transform: Transform::from_translation(Vec3::new(0., 0., -0.1)),
             global_transform: default(),
         }
@@ -468,7 +472,7 @@ fn tongue_kill_system(
 
 fn tongue_system(
     mut commands: Commands,
-    mut tongue: Query<(Entity, &mut Tongue, &GlobalTransform, &Children)>,
+    mut tongue: Query<(Entity, &mut Tongue, &GlobalTransform)>,
     player: Query<(Entity, &Player)>,
     mut transform: Query<&mut Transform>,
     mut visibility: Query<&mut Visibility>,
@@ -476,7 +480,7 @@ fn tongue_system(
     mouse_pos: Res<super::MousePos>,
     mut reader: EventReader<TweenCompleted>,
 ) {
-    let (tongue_entity, mut tongue, g_tr, children) = tongue.single_mut();
+    let (tongue_entity, mut tongue, g_tr) = tongue.single_mut();
 
     let (player_entity, player) = player.single();
 
@@ -505,11 +509,6 @@ fn tongue_system(
                 visibility.get_mut(tongue_entity).unwrap().is_visible = false;
             }
         }
-    }
-
-    let tongue_vis = visibility.get(tongue_entity).unwrap().clone();
-    for &e in &children[..] {
-        *visibility.get_mut(e).unwrap() = tongue_vis.clone();
     }
 
     if buttons.just_pressed(MouseButton::Left) && !player.jumping && !tongue.extending {
