@@ -1,4 +1,5 @@
 use bevy::{prelude::*, sprite::Anchor};
+use bevy_egui::EguiContext;
 use iyes_loopless::prelude::*;
 
 use crate::{player::PlayerAssets, GameAssets, MainCamera};
@@ -86,7 +87,16 @@ fn frog_scale(mut frog: Query<&mut Transform, With<Frog>>, time: Res<Time>) {
     .extend(1.0);
 }
 
-fn control(mut commands: Commands, buttons: Res<Input<MouseButton>>, keys: Res<Input<KeyCode>>) {
+fn control(
+    mut commands: Commands,
+    buttons: Res<Input<MouseButton>>,
+    keys: Res<Input<KeyCode>>,
+    mut egui_context: ResMut<EguiContext>,
+) {
+    if egui_context.ctx_mut().is_pointer_over_area() {
+        return;
+    }
+
     if buttons.just_released(MouseButton::Left) || keys.just_released(KeyCode::Space) {
         commands.insert_resource(NextState(GameState::InGame));
     }

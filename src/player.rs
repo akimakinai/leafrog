@@ -1,4 +1,5 @@
 use bevy::{prelude::*, sprite::Anchor};
+use bevy_egui::EguiContext;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
 use bevy_kira_audio::{Audio, AudioControl, AudioSource};
 use bevy_rapier2d::prelude::*;
@@ -478,6 +479,7 @@ fn tongue_system(
     buttons: Res<Input<MouseButton>>,
     mouse_pos: Res<super::MousePos>,
     mut reader: EventReader<TweenCompleted>,
+    mut egui_context: ResMut<EguiContext>,
 ) {
     let (tongue_entity, mut tongue, g_tr, mut visibility) = tongue.single_mut();
 
@@ -508,6 +510,10 @@ fn tongue_system(
                 visibility.is_visible = false;
             }
         }
+    }
+
+    if egui_context.ctx_mut().is_pointer_over_area() {
+        return;
     }
 
     if buttons.just_pressed(MouseButton::Left) && !player.jumping && !tongue.extending {

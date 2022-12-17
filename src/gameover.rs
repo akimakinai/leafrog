@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy_egui::EguiContext;
 use bevy_kira_audio::{AudioChannel, AudioControl};
 use iyes_loopless::prelude::*;
 
@@ -68,9 +69,14 @@ fn control(
     mut state: ResMut<GameOverState>,
     time: Res<Time>,
     keys: Res<Input<KeyCode>>,
+    mut egui_context: ResMut<EguiContext>,
 ) {
     state.cooldown.tick(time.delta());
     if !state.cooldown.finished() {
+        return;
+    }
+
+    if egui_context.ctx_mut().is_pointer_over_area() {
         return;
     }
 
