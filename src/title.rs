@@ -81,10 +81,8 @@ fn setup_title(
 
 fn frog_scale(mut frog: Query<&mut Transform, With<Frog>>, time: Res<Time>) {
     let mut tr = frog.single_mut();
-    tr.scale = Vec2::splat(
-        3.0 + 0.5 * f32::sin(time.elapsed_seconds() * std::f32::consts::PI),
-    )
-    .extend(1.0);
+    tr.scale = Vec2::splat(3.0 + 0.5 * f32::sin(time.elapsed_seconds() * std::f32::consts::PI))
+        .extend(1.0);
 }
 
 fn control(

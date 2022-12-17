@@ -1,11 +1,11 @@
 use std::time::Duration;
 
-use crate::GameState;
+use crate::{GameState, InGameTag};
 
 use super::Rotation;
 use bevy::{prelude::*};
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
-use bevy_kira_audio::{Audio, AudioSource, AudioInstance, AudioControl};
+use bevy_kira_audio::{Audio, AudioSource, AudioControl};
 use iyes_loopless::prelude::ConditionSet;
 use iyes_progress::prelude::AssetsLoading;
 use bevy_rapier2d::prelude::*;
@@ -16,7 +16,7 @@ pub struct LeafPlugin;
 
 impl Plugin for LeafPlugin {
     fn build(&self, app: &mut App) {
-        // app.register_inspectable::<Leaf>();
+        app.register_inspectable::<Leaf>();
 
         app.init_resource::<LeafAsset>().add_system_set(
             ConditionSet::new()

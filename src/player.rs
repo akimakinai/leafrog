@@ -23,7 +23,7 @@ impl Plugin for PlayerPlugin {
             .add_plugin(TweeningPlugin)
             .add_system(component_animator_system::<Handle<Image>>)
             .add_system(component_animator_system::<Tongue>)
-            // .register_inspectable::<Tongue>()
+            .register_inspectable::<Tongue>()
             .init_resource::<PlayerAssets>()
             .init_resource::<PlayerPos>()
             .add_event::<LandingEvent>()
@@ -404,7 +404,7 @@ fn spawn_tongue(mut commands: Commands, parent: Entity, res: Res<PlayerAssets>) 
         .insert(InGameTag)
         .id();
     let tip = commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             texture: res.tongue_tip.clone(),
             transform: Transform::from_scale(Vec3::new(0.3, 0.3, 1.))
                 .with_translation(Vec3::new(0., 64., 0.)),
@@ -428,7 +428,7 @@ fn spawn_tongue(mut commands: Commands, parent: Entity, res: Res<PlayerAssets>) 
         .id();
 
     let tongue = commands
-        .spawn_bundle(TongueBundle::new(base, tip))
+        .spawn(TongueBundle::new(base, tip))
         .push_children(&[base, tip])
         .insert(InGameTag)
         .id();
@@ -553,7 +553,7 @@ fn detect_drown(
     leafs: Query<&Leaf>,
     rapier_ctx: Res<RapierContext>,
     mut commands: Commands,
-    tran: EventReader<StateTransitionEvent<GameState>>,
+    // tran: EventReader<StateTransitionEvent<GameState>>,
 ) {
     let (player_entity, player, transform) = q.single();
 

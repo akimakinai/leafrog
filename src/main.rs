@@ -2,10 +2,10 @@
 
 use bevy::prelude::*;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable, WorldInspectorPlugin};
-use bevy_kira_audio::{AudioApp, AudioChannel, AudioPlugin, AudioSource, AudioControl};
+use bevy_kira_audio::{AudioApp, AudioChannel, AudioControl, AudioPlugin, AudioSource};
+use bevy_rapier2d::prelude::*;
 use enemy::EnemyKillEvent;
 use iyes_loopless::prelude::*;
-use bevy_rapier2d::prelude::*;
 use iyes_progress::{prelude::AssetsLoading, ProgressPlugin};
 use std::f32;
 
@@ -13,7 +13,7 @@ pub mod enemy;
 mod gameover;
 mod leaf;
 mod player;
-mod state_transition;
+// mod state_transition;
 mod title;
 
 use leaf::LeafAsset;
@@ -50,26 +50,25 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(ClearColor(Color::CYAN))
             .add_plugins(DefaultPlugins)
-            // .add_plugin(WorldInspectorPlugin::new())
+            .add_plugin(bevy_egui::EguiPlugin)
+            .add_plugin(WorldInspectorPlugin::new())
             .add_plugin(AudioPlugin)
             .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
-            // .add_plugin(PhysicsPlugin::default())
-            // .add_plugin(heron_debug::DebugPlugin::default())
             .add_loopless_state(GameState::AssetLoading)
             .add_plugin(
                 ProgressPlugin::new(GameState::AssetLoading)
                     .continue_to(GameState::Title)
                     .track_assets(),
-            )
-            .add_plugin(state_transition::StateTransitionDetectorPlugin::<GameState>::default());
+            );
+        // .add_plugin(state_transition::StateTransitionDetectorPlugin::<GameState>::default());
 
         app.add_plugin(enemy::EnemyPlugin)
             .add_plugin(player::PlayerPlugin)
             .add_plugin(leaf::LeafPlugin)
             .add_plugin(title::TitlePlugin)
             .add_plugin(gameover::GameOverPlugin)
-            // .register_inspectable::<player::Player>()
-            // .register_inspectable::<Rotation>()
+            .register_inspectable::<player::Player>()
+            .register_inspectable::<Rotation>()
             .add_startup_system(startup);
 
         app.add_audio_channel::<BGMTrack>()
@@ -110,9 +109,7 @@ impl FromWorld for GameAssets {
 
 fn startup(mut commands: Commands, mut windows: ResMut<Windows>) {
     windows.primary_mut().set_resizable(false);
-    commands
-        .spawn(Camera2dBundle::default())
-        .insert(MainCamera);
+    commands.spawn(Camera2dBundle::default()).insert(MainCamera);
 }
 
 #[derive(Component)]
