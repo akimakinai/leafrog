@@ -1,0 +1,13 @@
+[target.x86_64-pc-windows-msvc]
+linker = "lld"
+rustflags = [
+  "-Lnative=/opt/xwin/crt/lib/x86_64",
+  "-Lnative=/opt/xwin/sdk/lib/um/x86_64",
+  "-Lnative=/opt/xwin/sdk/lib/ucrt/x86_64"
+]
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"
