@@ -2,10 +2,10 @@
 
 use bevy::prelude::*;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable, WorldInspectorPlugin};
-use bevy_kira_audio::{AudioApp, AudioChannel, AudioPlugin, AudioSource};
+use bevy_kira_audio::{AudioApp, AudioChannel, AudioPlugin, AudioSource, AudioControl};
 use enemy::EnemyKillEvent;
-use heron::prelude::*;
 use iyes_loopless::prelude::*;
+use bevy_rapier2d::prelude::*;
 use iyes_progress::{prelude::AssetsLoading, ProgressPlugin};
 use std::f32;
 
@@ -21,6 +21,7 @@ fn main() {
     App::new().add_plugin(GamePlugin).run();
 }
 
+#[derive(Resource)]
 struct BGMTrack;
 
 struct GamePlugin;
@@ -36,13 +37,13 @@ enum GameState {
     GameOver,
 }
 
-#[derive(PhysicsLayer)]
-enum CollisionLayer {
-    Enemy,
-    Tongue,
-    Player,
-    Leaf,
-}
+// #[derive(PhysicsLayer)]
+// enum CollisionLayer {
+//     Enemy,
+//     Tongue,
+//     Player,
+//     Leaf,
+// }
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
@@ -50,7 +51,8 @@ impl Plugin for GamePlugin {
             .add_plugins(DefaultPlugins)
             // .add_plugin(WorldInspectorPlugin::new())
             .add_plugin(AudioPlugin)
-            .add_plugin(PhysicsPlugin::default())
+            .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
+            // .add_plugin(PhysicsPlugin::default())
             // .add_plugin(heron_debug::DebugPlugin::default())
             .add_loopless_state(GameState::AssetLoading)
             .add_plugin(
@@ -84,6 +86,7 @@ impl Plugin for GamePlugin {
     }
 }
 
+#[derive(Resource)]
 struct GameAssets {
     bgm: Handle<AudioSource>,
     font: Handle<Font>,
@@ -106,7 +109,7 @@ impl FromWorld for GameAssets {
 fn startup(mut commands: Commands, mut windows: ResMut<Windows>) {
     windows.primary_mut().set_resizable(false);
     commands
-        .spawn_bundle(Camera2dBundle::default())
+        .spawn(Camera2dBundle::default())
         .insert(MainCamera);
 }
 
@@ -119,6 +122,8 @@ fn ingame_startup(
     audio: Res<AudioChannel<BGMTrack>>,
     assets: Res<GameAssets>,
 ) {
+    info!("ingame_startup");
+
     let leaf_pos = [
         [0, 0],
         [0, 1],
@@ -145,17 +150,17 @@ fn ingame_startup(
     }
 
     commands
-        .spawn_bundle((
+        .spawn((
             Name::new("Leafs"),
             GlobalTransform::default(),
             Transform::default(),
         ))
-        .insert_bundle(VisibilityBundle::default())
+        .insert(VisibilityBundle::default())
         .insert(InGameTag)
         .push_children(&leaves);
 
     commands
-        .spawn_bundle(TextBundle {
+        .spawn(TextBundle {
             style: Style {
                 align_self: AlignSelf::FlexEnd,
                 position_type: PositionType::Absolute,
@@ -181,7 +186,7 @@ fn ingame_startup(
         .insert(InGameTag);
 
     audio.set_volume(0.2);
-    audio.play_looped(assets.bgm.clone());
+    audio.play(assets.bgm.clone()).looped();
 }
 
 fn score_system(mut kill_ev: EventReader<EnemyKillEvent>, mut q: Query<(&mut Text, &mut Score)>) {
@@ -207,7 +212,7 @@ fn rotation_system(mut q: Query<(&mut Transform, &Rotation), Changed<Rotation>>)
 #[derive(Component)]
 struct MainCamera;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Resource)]
 struct MousePos(Option<Vec2>);
 
 fn my_cursor_system(

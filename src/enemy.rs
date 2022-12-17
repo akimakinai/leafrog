@@ -1,8 +1,8 @@
-use crate::{CollisionLayer, InGameTag, Rotation};
+use crate::{InGameTag, Rotation};
 use bevy::prelude::*;
-use heron::prelude::*;
 use iyes_loopless::prelude::*;
 use iyes_progress::prelude::AssetsLoading;
+use bevy_rapier2d::prelude::*;
 use std::f32;
 
 use super::GameState;
@@ -24,6 +24,7 @@ impl Plugin for EnemyPlugin {
     }
 }
 
+#[derive(Resource)]
 struct EnemyAssets {
     texture: Handle<Image>,
 }
@@ -64,15 +65,15 @@ fn spawn_bugs(mut commands: Commands, assets: Res<EnemyAssets>) {
     for _ in 0..20 {
         let (pos, rot) = random_initial_pos_rot();
         commands
-            .spawn_bundle(BugBundle::new(assets.texture.clone(), pos, rot))
-            .insert_bundle((
-                RigidBody::Static,
-                CollisionShape::Cuboid {
-                    half_extends: Vec3::new(20., 20., 0.),
-                    border_radius: None,
-                },
-                CollisionLayers::all_masks::<CollisionLayer>().with_group(CollisionLayer::Enemy),
-            ))
+            .spawn(
+                (
+                    BugBundle::new(assets.texture.clone(), pos, rot),
+                    Sensor,
+                    Collider::cuboid(20., 20.),
+                    CollisionGroups::new(Group::GROUP_1, Group::ALL),
+                    ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+            )
+            )
             .insert(InGameTag);
     }
 }

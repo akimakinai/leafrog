@@ -34,7 +34,7 @@ fn setup_title(
     game_assets: Res<GameAssets>,
 ) {
     commands
-        .spawn_bundle(TextBundle {
+        .spawn(TextBundle {
             style: Style {
                 align_self: AlignSelf::FlexEnd,
                 position_type: PositionType::Absolute,
@@ -73,7 +73,7 @@ fn setup_title(
         },
         ..default()
     };
-    commands.spawn_bundle(frog).insert(Title).insert(Frog);
+    commands.spawn(frog).insert(Title).insert(Frog);
 
     transform.single_mut().translation = Vec3::new(0., 0., 999.0);
 }
@@ -81,7 +81,7 @@ fn setup_title(
 fn frog_scale(mut frog: Query<&mut Transform, With<Frog>>, time: Res<Time>) {
     let mut tr = frog.single_mut();
     tr.scale = Vec2::splat(
-        3.0 + 0.5 * f32::sin(time.seconds_since_startup() as f32 * std::f32::consts::PI),
+        3.0 + 0.5 * f32::sin(time.elapsed_seconds() * std::f32::consts::PI),
     )
     .extend(1.0);
 }
@@ -93,5 +93,6 @@ fn control(mut commands: Commands, buttons: Res<Input<MouseButton>>, keys: Res<I
 }
 
 fn despawn_title(mut commands: Commands, q: Query<Entity, With<Title>>) {
+    info!("despawn_title");
     q.for_each(|e| commands.entity(e).despawn_recursive());
 }

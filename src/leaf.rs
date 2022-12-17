@@ -1,14 +1,14 @@
 use std::time::Duration;
 
-use crate::{CollisionLayer, GameState};
+use crate::GameState;
 
 use super::Rotation;
 use bevy::{prelude::*};
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
-use bevy_kira_audio::{Audio, AudioSource, InstanceHandle};
-use heron::prelude::*;
+use bevy_kira_audio::{Audio, AudioSource, AudioInstance, AudioControl};
 use iyes_loopless::prelude::ConditionSet;
 use iyes_progress::prelude::AssetsLoading;
+use bevy_rapier2d::prelude::*;
 
 pub const LEAF_SIZE: f32 = 256.0;
 
@@ -38,6 +38,7 @@ impl Plugin for LeafPlugin {
 //     }
 // }
 
+#[derive(Resource)]
 pub struct LeafAsset {
     texture: Handle<Image>,
     audio_drop: Handle<AudioSource>,
@@ -67,7 +68,7 @@ pub fn spawn_leaf<'w, 's, 'a>(
     asset: &LeafAsset,
 ) -> bevy::ecs::system::EntityCommands<'w, 's, 'a> {
     let tr = Vec2::new(pos.x as f32, pos.y as f32) * Vec2::splat(LEAF_SIZE);
-    let mut e = commands.spawn_bundle(LeafBundle {
+    let mut e = commands.spawn(LeafBundle {
         leaf: Leaf {
             decay: 0.,
             pos,
@@ -83,11 +84,11 @@ pub fn spawn_leaf<'w, 's, 'a>(
         },
         rotation: Rotation(fastrand::f32() * (2. * std::f32::consts::PI)),
     });
-    e.insert_bundle((
-        RigidBody::Sensor,
-        CollisionShape::Sphere { radius: 128. },
-        Collisions::default(),
-        CollisionLayers::all_masks::<CollisionLayer>().with_group(CollisionLayer::Leaf),
+    e.insert((
+        Sensor,
+        Collider::ball(128.),
+        CollisionGroups::new(Group::GROUP_4, Group::ALL),
+        ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
     ));
     e
 }
@@ -114,7 +115,6 @@ fn leaf_decay_system(
     time: Res<Time>,
     audio: Res<Audio>,
     asset: Res<LeafAsset>,
-    mut audio_handle: Local<Option<InstanceHandle>>,
 ) {
     let mut leaf_drop = false;
 
@@ -142,7 +142,7 @@ fn leaf_decay_system(
                 leaf_drop = true;
             }
             if x.restore_timer.is_none() && x.decay >= 1.0 {
-                x.restore_timer = Some(Timer::new(Duration::from_secs(5), false));
+                x.restore_timer = Some(Timer::new(Duration::from_secs(5), TimerMode::Once));
             }
         }
 
@@ -151,8 +151,8 @@ fn leaf_decay_system(
     });
 
     if leaf_drop {
-        audio.set_playback_rate(1.0 + (fastrand::f32() - 0.5) * 0.2);
-        *audio_handle = Some(audio.play(asset.audio_drop.clone()));
+        audio.set_playback_rate(1.0 + (fastrand::f64() - 0.5) * 0.2);
+        audio.play(asset.audio_drop.clone());
     }
 }
 
@@ -167,7 +167,7 @@ fn leaf_rotator(mut q: Query<(Entity, &mut Rotation), With<Leaf>>, time: Res<Tim
         };
         r.0 += std::f32::consts::PI
             * time.delta_seconds()
-            * (xorshift(e.id()) as f32 / std::u32::MAX as f32 * 20.0)
+            * (xorshift(e.index()) as f32 / std::u32::MAX as f32 * 20.0)
             / 100.0;
     })
 }
