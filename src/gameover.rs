@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy_kira_audio::AudioChannel;
+use bevy_kira_audio::{AudioChannel, AudioControl};
 use iyes_loopless::prelude::*;
 
 use crate::{BGMTrack, GameAssets, GameState, InGameTag};
@@ -21,7 +21,7 @@ impl Plugin for GameOverPlugin {
 #[derive(Component)]
 struct GameOverTag;
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct GameOverState {
     cooldown: Timer,
 }
@@ -32,29 +32,29 @@ fn setup_gameover(
     mut state: ResMut<GameOverState>,
     game_assets: Res<GameAssets>,
 ) {
-    state.cooldown = Timer::new(Duration::from_millis(800), false);
+    state.cooldown = Timer::new(Duration::from_millis(800), default());
 
     commands
-        .spawn_bundle(TextBundle {
+        .spawn(TextBundle {
             style: Style {
                 size: Size::new(Val::Percent(50.0), Val::Px(0.)),
-                margin: Rect::all(Val::Auto),
+                margin: UiRect::all(Val::Auto),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 ..default()
             },
-            text: Text::with_section(
+            text: Text::from_section(
                 "GAMEOVER",
                 TextStyle {
                     font: game_assets.font.clone(),
                     font_size: 150.0,
                     color: Color::SEA_GREEN,
                 },
-                TextAlignment {
-                    vertical: VerticalAlign::Center,
-                    horizontal: HorizontalAlign::Center,
-                },
-            ),
+            )
+            .with_alignment(TextAlignment {
+                vertical: VerticalAlign::Center,
+                horizontal: HorizontalAlign::Center,
+            }),
             ..default()
         })
         .insert(GameOverTag);
@@ -80,5 +80,5 @@ fn control(
 }
 
 fn despawn<C: Component>(mut commands: Commands, q: Query<Entity, With<C>>) {
-    q.for_each(|e| commands.entity(e).despawn_recursive());
+    q.for_each(|e| commands.entity(e).despawn());
 }

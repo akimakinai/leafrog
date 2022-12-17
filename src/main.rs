@@ -2,10 +2,10 @@
 
 use bevy::prelude::*;
 use bevy_inspector_egui::{Inspectable, RegisterInspectable, WorldInspectorPlugin};
-use bevy_kira_audio::{AudioApp, AudioChannel, AudioPlugin, AudioSource};
+use bevy_kira_audio::{AudioApp, AudioChannel, AudioPlugin, AudioSource, AudioControl};
 use enemy::EnemyKillEvent;
-use heron::prelude::*;
 use iyes_loopless::prelude::*;
+use bevy_rapier2d::prelude::*;
 use iyes_progress::{prelude::AssetsLoading, ProgressPlugin};
 use std::f32;
 
@@ -22,6 +22,7 @@ fn main() {
     App::new().add_plugin(GamePlugin).run();
 }
 
+#[derive(Resource)]
 struct BGMTrack;
 
 struct GamePlugin;
@@ -37,13 +38,13 @@ enum GameState {
     GameOver,
 }
 
-#[derive(PhysicsLayer)]
-enum CollisionLayer {
-    Enemy,
-    Tongue,
-    Player,
-    Leaf,
-}
+// #[derive(PhysicsLayer)]
+// enum CollisionLayer {
+//     Enemy,
+//     Tongue,
+//     Player,
+//     Leaf,
+// }
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
@@ -51,7 +52,8 @@ impl Plugin for GamePlugin {
             .add_plugins(DefaultPlugins)
             // .add_plugin(WorldInspectorPlugin::new())
             .add_plugin(AudioPlugin)
-            .add_plugin(PhysicsPlugin::default())
+            .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
+            // .add_plugin(PhysicsPlugin::default())
             // .add_plugin(heron_debug::DebugPlugin::default())
             .add_loopless_state(GameState::AssetLoading)
             .add_plugin(
@@ -71,7 +73,7 @@ impl Plugin for GamePlugin {
             .add_startup_system(startup);
 
         app.add_audio_channel::<BGMTrack>()
-            .add_system(bevy::input::system::exit_on_esc_system)
+            .add_system(bevy::window::close_on_esc)
             .init_resource::<MousePos>()
             .init_resource::<GameAssets>()
             .add_system(my_cursor_system)
@@ -86,6 +88,7 @@ impl Plugin for GamePlugin {
     }
 }
 
+#[derive(Resource)]
 struct GameAssets {
     bgm: Handle<AudioSource>,
     font: Handle<Font>,
@@ -108,9 +111,8 @@ impl FromWorld for GameAssets {
 fn startup(mut commands: Commands, mut windows: ResMut<Windows>) {
     windows.primary_mut().set_resizable(false);
     commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .spawn(Camera2dBundle::default())
         .insert(MainCamera);
-    commands.spawn_bundle(UiCameraBundle::default());
 }
 
 #[derive(Component)]
@@ -122,6 +124,8 @@ fn ingame_startup(
     audio: Res<AudioChannel<BGMTrack>>,
     assets: Res<GameAssets>,
 ) {
+    info!("ingame_startup");
+
     let leaf_pos = [
         [0, 0],
         [0, 1],
@@ -148,20 +152,21 @@ fn ingame_startup(
     }
 
     commands
-        .spawn_bundle((
+        .spawn((
             Name::new("Leafs"),
             GlobalTransform::default(),
             Transform::default(),
         ))
+        .insert(VisibilityBundle::default())
         .insert(InGameTag)
         .push_children(&leaves);
 
     commands
-        .spawn_bundle(TextBundle {
+        .spawn(TextBundle {
             style: Style {
                 align_self: AlignSelf::FlexEnd,
                 position_type: PositionType::Absolute,
-                position: Rect {
+                position: UiRect {
                     bottom: Val::Px(5.0),
                     right: Val::Px(15.0),
                     ..default()
@@ -169,14 +174,13 @@ fn ingame_startup(
                 ..default()
             },
             // Use the `Text::with_section` constructor
-            text: Text::with_section(
+            text: Text::from_section(
                 "Score: 0",
                 TextStyle {
                     font: assets.font.clone(),
                     font_size: 40.0,
                     color: Color::SEA_GREEN,
                 },
-                default(),
             ),
             ..default()
         })
@@ -184,7 +188,7 @@ fn ingame_startup(
         .insert(InGameTag);
 
     audio.set_volume(0.2);
-    audio.play_looped(assets.bgm.clone());
+    audio.play(assets.bgm.clone()).looped();
 }
 
 fn score_system(mut kill_ev: EventReader<EnemyKillEvent>, mut q: Query<(&mut Text, &mut Score)>) {
@@ -210,7 +214,7 @@ fn rotation_system(mut q: Query<(&mut Transform, &Rotation), Changed<Rotation>>)
 #[derive(Component)]
 struct MainCamera;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Resource)]
 struct MousePos(Option<Vec2>);
 
 fn my_cursor_system(
@@ -237,7 +241,7 @@ fn my_cursor_system(
         let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
 
         // matrix for undoing the projection and camera transform
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix.inverse();
+        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
 
         // use it to convert ndc to world-space coordinates
         let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));

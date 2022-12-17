@@ -1,16 +1,15 @@
 use bevy::{prelude::*, sprite::Anchor};
 use bevy_inspector_egui::{Inspectable, RegisterInspectable};
-use bevy_kira_audio::{Audio, AudioSource};
+use bevy_kira_audio::{Audio, AudioControl, AudioSource};
+use bevy_rapier2d::prelude::*;
 use bevy_tweening::*;
-use heron::prelude::*;
 use iyes_loopless::prelude::*;
 use iyes_progress::prelude::AssetsLoading;
 use leafwing_input_manager::prelude::*;
 use std::f32;
 
 use crate::enemy::EnemyKillEvent;
-use crate::state_transition::StateTransitionEvent;
-use crate::{CollisionLayer, GameState, InGameTag, MainCamera};
+use crate::{GameState, InGameTag, MainCamera};
 
 use super::Rotation;
 use crate::leaf::{Leaf, LEAF_SIZE};
@@ -55,7 +54,9 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn startup(mut commands: Commands, assets: Res<PlayerAssets>) {
+fn startup(mut commands: Commands, assets: Res<PlayerAssets>, mut player_pos: ResMut<PlayerPos>) {
+    *player_pos = PlayerPos::default();
+
     let frog = PlayerBundle {
         sprite: SpriteBundle {
             texture: assets.player[0].clone(),
@@ -70,31 +71,29 @@ fn startup(mut commands: Commands, assets: Res<PlayerAssets>) {
     };
 
     let player = commands
-        .spawn_bundle(frog)
+        .spawn(frog)
         .insert(Name::new("Player"))
-        .insert_bundle(InputManagerBundle::<PlayerAction> {
+        .insert(InputManagerBundle::<PlayerAction> {
             action_state: ActionState::default(),
             input_map: InputMap::new([
-                (PlayerAction::Up, KeyCode::Up),
-                (PlayerAction::Up, KeyCode::W),
-                (PlayerAction::Down, KeyCode::Down),
-                (PlayerAction::Down, KeyCode::S),
-                (PlayerAction::Left, KeyCode::Left),
-                (PlayerAction::Left, KeyCode::A),
-                (PlayerAction::Right, KeyCode::Right),
-                (PlayerAction::Right, KeyCode::D),
+                (KeyCode::Up, PlayerAction::Up),
+                (KeyCode::W, PlayerAction::Up),
+                (KeyCode::Down, PlayerAction::Down),
+                (KeyCode::S, PlayerAction::Down),
+                (KeyCode::Left, PlayerAction::Left),
+                (KeyCode::A, PlayerAction::Left),
+                (KeyCode::Right, PlayerAction::Right),
+                (KeyCode::D, PlayerAction::Right),
             ]),
         })
-        .insert_bundle((
-            RigidBody::Sensor,
-            CollisionShape::Cuboid {
-                half_extends: Vec3::new(64., 64., 0.),
-                border_radius: None,
-            },
-            Collisions::default(),
-            CollisionLayers::none()
-                .with_group(CollisionLayer::Player)
-                .with_mask(CollisionLayer::Leaf),
+        .insert((
+            Sensor,
+            Collider::cuboid(64., 64.),
+            CollisionGroups::new(Group::GROUP_2, Group::GROUP_4),
+            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+            // CollisionLayers::none()
+            //     .with_group(CollisionLayer::Player)
+            //     .with_mask(CollisionLayer::Leaf),
         ))
         .insert(InGameTag)
         .id();
@@ -102,7 +101,7 @@ fn startup(mut commands: Commands, assets: Res<PlayerAssets>) {
     spawn_tongue(commands, player, assets);
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Resource)]
 pub struct PlayerPos(pub IVec2);
 
 #[derive(Component, Default, Inspectable)]
@@ -119,6 +118,7 @@ pub struct PlayerBundle {
     sprite: SpriteBundle,
 }
 
+#[derive(Resource)]
 pub struct PlayerAssets {
     pub player: [Handle<Image>; 3],
     tongue_base: Handle<Image>,
@@ -264,7 +264,7 @@ fn jump_system(
 
         let tween = Tween::new(
             EaseFunction::CubicInOut,
-            TweeningType::Once,
+            // TweeningType::Once,
             std::time::Duration::from_millis(200),
             lens::TransformScaleLens {
                 start: Vec3::ONE,
@@ -273,7 +273,7 @@ fn jump_system(
         )
         .then(Tween::new(
             EaseFunction::CubicInOut,
-            TweeningType::Once,
+            // TweeningType::Once,
             std::time::Duration::from_millis(200),
             lens::TransformScaleLens {
                 start: Vec2::splat(JUMP_CAMERA_SCALE).extend(1.),
@@ -286,7 +286,7 @@ fn jump_system(
         let tween = Tracks::new([
             Tween::new(
                 EaseFunction::CubicInOut,
-                TweeningType::Once,
+                // TweeningType::Once,
                 std::time::Duration::from_millis(200),
                 TransformScalePositionLens {
                     scale: lens::TransformScaleLens {
@@ -302,18 +302,18 @@ fn jump_system(
             .then(
                 Tween::new(
                     EaseFunction::CubicInOut,
-                    TweeningType::Once,
+                    // TweeningType::Once,
                     std::time::Duration::from_millis(200),
                     lens::TransformScaleLens {
                         start: Vec2::splat(JUMP_SCALE).extend(1.),
                         end: Vec3::ONE,
                     },
                 )
-                .with_completed_event(true, 0),
+                .with_completed_event(0),
             ),
             Sequence::new([Tween::new(
                 EaseFunction::QuadraticInOut,
-                TweeningType::Once,
+                // TweeningType::Once,
                 std::time::Duration::from_millis(100),
                 lens::TransformRotationLens {
                     start: player_transform.rotation,
@@ -328,7 +328,7 @@ fn jump_system(
             .map(|(idx, dur)| {
                 Tween::new(
                     EaseFunction::QuadraticInOut,
-                    TweeningType::Once,
+                    // TweeningType::Once,
                     std::time::Duration::from_millis(dur),
                     HandleImageLens {
                         start: game_assets.player[idx[0]].clone(),
@@ -360,7 +360,8 @@ struct TongueBundle {
     rotation: Rotation,
     transform: Transform,
     global_transform: GlobalTransform,
-    visibility: Visibility,
+    #[bundle]
+    visibility: VisibilityBundle,
 }
 
 const TONGUE_LEN_DEFAULT: f32 = 32.;
@@ -376,7 +377,10 @@ impl TongueBundle {
                 extending: false,
             },
             rotation: default(),
-            visibility: Visibility { is_visible: false },
+            visibility: VisibilityBundle {
+                visibility: Visibility { is_visible: false },
+                computed: default(),
+            },
             transform: Transform::from_translation(Vec3::new(0., 0., -0.1)),
             global_transform: default(),
         }
@@ -385,7 +389,7 @@ impl TongueBundle {
 
 fn spawn_tongue(mut commands: Commands, parent: Entity, res: Res<PlayerAssets>) {
     let base = commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             texture: res.tongue_base.clone(),
             transform: Transform::from_scale(Vec3::new(0.3, 1., 1.))
                 .with_translation(Vec3::new(0., 0., 0.)),
@@ -409,16 +413,14 @@ fn spawn_tongue(mut commands: Commands, parent: Entity, res: Res<PlayerAssets>) 
             },
             ..default()
         })
-        .insert_bundle((
-            RigidBody::Sensor,
-            CollisionShape::Cuboid {
-                half_extends: Vec3::new(32., 32., 0.),
-                border_radius: None,
-            },
-            Collisions::default(),
-            CollisionLayers::none()
-                .with_group(CollisionLayer::Tongue)
-                .with_mask(CollisionLayer::Enemy),
+        .insert((
+            Sensor,
+            Collider::cuboid(32., 32.),
+            CollisionGroups::new(Group::GROUP_3, Group::GROUP_1),
+            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+            // CollisionLayers::none()
+            //     .with_group(CollisionLayer::Tongue)
+            //     .with_mask(CollisionLayer::Enemy),
         ))
         .insert(Name::new("TongueTip"))
         .insert(InGameTag)
@@ -447,7 +449,7 @@ impl lens::Lens<Tongue> for TongueLengthLens {
 fn tongue_kill_system(
     mut ev_kill: EventWriter<EnemyKillEvent>,
     tongue: Query<(&Tongue, &Visibility)>,
-    collisions: Query<&Collisions>,
+    rapier_ctx: Res<RapierContext>,
     game_assets: Res<PlayerAssets>,
     audio: Res<Audio>,
 ) {
@@ -455,29 +457,29 @@ fn tongue_kill_system(
 
     if tongue.extending && tongue_vis.is_visible {
         let mut killed = false;
-        if let Ok(collisions) = collisions.get(tongue.tip) {
-            ev_kill.send_batch(collisions.entities().map(EnemyKillEvent));
-            killed = !collisions.is_empty();
+        for other in get_intersections(&rapier_ctx, tongue.tip) {
+            ev_kill.send(EnemyKillEvent(other));
+            killed = true;
         }
 
         if killed {
-            audio.set_playback_rate(1.0 + (fastrand::f32() - 0.5) * 0.2);
-            audio.play(game_assets.kill_sound.clone());
+            audio
+                .play(game_assets.kill_sound.clone())
+                .with_playback_rate(1.0 + (fastrand::f64() - 0.5) * 0.2);
         }
     }
 }
 
 fn tongue_system(
     mut commands: Commands,
-    mut tongue: Query<(Entity, &mut Tongue, &GlobalTransform, &Children)>,
+    mut tongue: Query<(Entity, &mut Tongue, &GlobalTransform, &mut Visibility)>,
     player: Query<(Entity, &Player)>,
     mut transform: Query<&mut Transform>,
-    mut visibility: Query<&mut Visibility>,
     buttons: Res<Input<MouseButton>>,
     mouse_pos: Res<super::MousePos>,
     mut reader: EventReader<TweenCompleted>,
 ) {
-    let (tongue_entity, mut tongue, g_tr, children) = tongue.single_mut();
+    let (tongue_entity, mut tongue, g_tr, mut visibility) = tongue.single_mut();
 
     let (player_entity, player) = player.single();
 
@@ -489,53 +491,48 @@ fn tongue_system(
             if ev.user_data == 0 {
                 let tween = Tween::new(
                     EaseFunction::QuarticIn,
-                    TweeningType::Once,
+                    // TweeningType::Once,
                     std::time::Duration::from_millis((tongue.length as u64 / 2).max(400)),
                     TongueLengthLens {
                         start: tongue.length,
                         end: TONGUE_LEN_DEFAULT.min(tongue.length),
                     },
                 )
-                .with_completed_event(true, 1);
+                .with_completed_event(1);
                 commands.entity(tongue_entity).insert(Animator::new(tween));
 
                 tongue.extending = false;
 
                 return;
             } else {
-                visibility.get_mut(tongue_entity).unwrap().is_visible = false;
+                visibility.is_visible = false;
             }
         }
     }
 
-    let tongue_vis = visibility.get(tongue_entity).unwrap().clone();
-    for &e in &children[..] {
-        *visibility.get_mut(e).unwrap() = tongue_vis.clone();
-    }
-
     if buttons.just_pressed(MouseButton::Left) && !player.jumping && !tongue.extending {
-        visibility.get_mut(tongue_entity).unwrap().is_visible = true;
+        visibility.is_visible = true;
 
         if let Some(mouse_pos) = mouse_pos.0 {
-            let length = mouse_pos.distance(g_tr.translation.truncate()) - 32.0;
+            let length = mouse_pos.distance(g_tr.translation().truncate()) - 32.0;
 
             let tween = Tween::new(
                 EaseFunction::QuarticInOut,
-                TweeningType::Once,
+                // TweeningType::Once,
                 std::time::Duration::from_millis((length as u64 / 4).max(150)),
                 TongueLengthLens {
                     start: TONGUE_LEN_DEFAULT.min(length),
                     end: length,
                 },
             )
-            .with_completed_event(true, 0);
+            .with_completed_event(0);
             commands.entity(tongue_entity).insert(Animator::new(tween));
 
             tongue.extending = true;
 
             let player_rot = transform.get(player_entity).unwrap().rotation;
 
-            let to_mouse = mouse_pos - g_tr.translation.truncate();
+            let to_mouse = mouse_pos - g_tr.translation().truncate();
 
             // player rotation will be applied, hence multiplication by the inverse of it
             transform.get_mut(tongue_entity).unwrap().rotation =
@@ -546,27 +543,37 @@ fn tongue_system(
 
 fn detect_drown(
     landing: EventReader<LandingEvent>,
-    q: Query<(&Player, &Collisions)>,
+    q: Query<(Entity, &Player, &Transform)>,
     leafs: Query<&Leaf>,
+    rapier_ctx: Res<RapierContext>,
     mut commands: Commands,
     tran: EventReader<StateTransitionEvent<GameState>>,
 ) {
-    let (player, collisions) = q.single();
+    let (player_entity, player, transform) = q.single();
 
     if player.jumping && landing.is_empty() {
         return;
     }
 
-    // Collisions may not be updated at this time.
-    // `update_collisions_system` is private so we can't add scheduling constraint.
-    let is_first_frame = !tran.is_empty();
+    let inter = get_intersections(&rapier_ctx, player_entity).collect::<Vec<_>>();
 
-    if collisions
-        .entities()
-        .any(|e| leafs.get(e).unwrap().decay >= 1.0)
-    {
+    if inter.iter().any(|&e| leafs.get(e).unwrap().decay >= 1.0) {
         commands.insert_resource(NextState(GameState::GameOver));
-    } else if collisions.entities().count() == 0 && !is_first_frame {
+    } else if inter.is_empty() && transform.translation.truncate() != Vec2::new(0., 0.) {
         commands.insert_resource(NextState(GameState::GameOver));
     }
+}
+
+fn get_intersections(ctx: &RapierContext, entity: Entity) -> impl Iterator<Item = Entity> + '_ {
+    ctx.intersections_with(entity)
+        .filter_map(move |(a, b, inter)| {
+            if !inter {
+                return None;
+            }
+            if a == entity {
+                Some(b)
+            } else {
+                Some(a)
+            }
+        })
 }

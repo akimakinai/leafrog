@@ -34,11 +34,11 @@ fn setup_title(
     game_assets: Res<GameAssets>,
 ) {
     commands
-        .spawn_bundle(TextBundle {
+        .spawn(TextBundle {
             style: Style {
                 align_self: AlignSelf::FlexEnd,
                 position_type: PositionType::Absolute,
-                position: Rect {
+                position: UiRect {
                     bottom: Val::Px(5.0),
                     right: Val::Px(15.0),
                     ..default()
@@ -46,7 +46,7 @@ fn setup_title(
                 ..default()
             },
             // Use the `Text::with_section` constructor
-            text: Text::with_section(
+            text: Text::from_section(
                 // Accepts a `String` or any type that converts into a `String`, such as `&str`
                 "LEAFROG",
                 TextStyle {
@@ -54,12 +54,11 @@ fn setup_title(
                     font_size: 150.0,
                     color: Color::SEA_GREEN,
                 },
-                // Note: You can use `Default::default()` in place of the `TextAlignment`
-                TextAlignment {
-                    horizontal: HorizontalAlign::Center,
-                    ..default()
-                },
-            ),
+            )
+            .with_alignment(TextAlignment {
+                horizontal: HorizontalAlign::Center,
+                ..default()
+            }),
             ..default()
         })
         .insert(Title);
@@ -74,7 +73,7 @@ fn setup_title(
         },
         ..default()
     };
-    commands.spawn_bundle(frog).insert(Title).insert(Frog);
+    commands.spawn(frog).insert(Title).insert(Frog);
 
     transform.single_mut().translation = Vec3::new(0., 0., 999.0);
 }
@@ -82,7 +81,7 @@ fn setup_title(
 fn frog_scale(mut frog: Query<&mut Transform, With<Frog>>, time: Res<Time>) {
     let mut tr = frog.single_mut();
     tr.scale = Vec2::splat(
-        3.0 + 0.5 * f32::sin(time.seconds_since_startup() as f32 * std::f32::consts::PI),
+        3.0 + 0.5 * f32::sin(time.elapsed_seconds() * std::f32::consts::PI),
     )
     .extend(1.0);
 }
@@ -94,5 +93,6 @@ fn control(mut commands: Commands, buttons: Res<Input<MouseButton>>, keys: Res<I
 }
 
 fn despawn_title(mut commands: Commands, q: Query<Entity, With<Title>>) {
+    info!("despawn_title");
     q.for_each(|e| commands.entity(e).despawn_recursive());
 }
