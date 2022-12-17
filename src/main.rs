@@ -13,7 +13,7 @@ pub mod enemy;
 mod gameover;
 mod leaf;
 mod player;
-// mod state_transition;
+mod state_transition;
 mod title;
 
 use leaf::LeafAsset;
@@ -59,8 +59,8 @@ impl Plugin for GamePlugin {
                 ProgressPlugin::new(GameState::AssetLoading)
                     .continue_to(GameState::Title)
                     .track_assets(),
-            );
-        // .add_plugin(state_transition::StateTransitionDetectorPlugin::<GameState>::default());
+            )
+            .add_plugin(state_transition::StateTransitionDetectorPlugin::<GameState>::default());
 
         app.add_plugin(enemy::EnemyPlugin)
             .add_plugin(player::PlayerPlugin)

@@ -36,7 +36,7 @@ impl<S: StateData> Plugin for StateTransitionDetectorPlugin<S> {
         let stage = SystemStage::parallel().with_system(state_transition_detector::<S>);
 
         app.add_event::<StateTransitionEvent<S>>().add_stage_before(
-            iyes_loopless::state::app::StateTransitionStageLabel::from_type::<S>(),
+            iyes_loopless::state::StateTransitionStageLabel::from_type::<S>(),
             StateTransitionDetectorStage,
             stage,
         );

@@ -10,6 +10,7 @@ use leafwing_input_manager::prelude::*;
 use std::f32;
 
 use crate::enemy::EnemyKillEvent;
+use crate::state_transition::StateTransitionEvent;
 use crate::{GameState, InGameTag, MainCamera};
 
 use super::Rotation;
@@ -549,13 +550,13 @@ fn tongue_system(
 
 fn detect_drown(
     landing: EventReader<LandingEvent>,
-    q: Query<(Entity, &Player, &Transform)>,
+    q: Query<(Entity, &Player)>,
     leafs: Query<&Leaf>,
     rapier_ctx: Res<RapierContext>,
     mut commands: Commands,
-    // tran: EventReader<StateTransitionEvent<GameState>>,
+    tran: EventReader<StateTransitionEvent<GameState>>,
 ) {
-    let (player_entity, player, transform) = q.single();
+    let (player_entity, player) = q.single();
 
     if player.jumping && landing.is_empty() {
         return;
@@ -565,7 +566,7 @@ fn detect_drown(
 
     if inter.iter().any(|&e| leafs.get(e).unwrap().decay >= 1.0) {
         commands.insert_resource(NextState(GameState::GameOver));
-    } else if inter.is_empty() && transform.translation.truncate() != Vec2::new(0., 0.) {
+    } else if inter.is_empty() && tran.is_empty() {
         commands.insert_resource(NextState(GameState::GameOver));
     }
 }
