@@ -520,31 +520,31 @@ fn tongue_system(
     if buttons.just_pressed(MouseButton::Left) && !player.jumping && !tongue.extending {
         visibility.is_visible = true;
 
-        if let Some(mouse_pos) = mouse_pos.0 {
-            let length = mouse_pos.distance(g_tr.translation().truncate()) - 32.0;
+        let Some(mouse_pos) = mouse_pos.0 else { return };
 
-            let tween = Tween::new(
-                EaseFunction::QuarticInOut,
-                // TweeningType::Once,
-                std::time::Duration::from_millis((length as u64 / 4).max(150)),
-                TongueLengthLens {
-                    start: TONGUE_LEN_DEFAULT.min(length),
-                    end: length,
-                },
-            )
-            .with_completed_event(0);
-            commands.entity(tongue_entity).insert(Animator::new(tween));
+        let length = mouse_pos.distance(g_tr.translation().truncate()) - 32.0;
 
-            tongue.extending = true;
+        let tween = Tween::new(
+            EaseFunction::QuarticInOut,
+            // TweeningType::Once,
+            std::time::Duration::from_millis((length as u64 / 4).max(150)),
+            TongueLengthLens {
+                start: TONGUE_LEN_DEFAULT.min(length),
+                end: length,
+            },
+        )
+        .with_completed_event(0);
+        commands.entity(tongue_entity).insert(Animator::new(tween));
 
-            let player_rot = transform.get(player_entity).unwrap().rotation;
+        tongue.extending = true;
 
-            let to_mouse = mouse_pos - g_tr.translation().truncate();
+        let player_rot = transform.get(player_entity).unwrap().rotation;
 
-            // player rotation will be applied, hence multiplication by the inverse of it
-            transform.get_mut(tongue_entity).unwrap().rotation =
-                Quat::from_rotation_z(Vec2::Y.angle_between(to_mouse)) * player_rot.inverse();
-        }
+        let to_mouse = mouse_pos - g_tr.translation().truncate();
+
+        // player rotation will be applied, hence multiplication by the inverse of it
+        transform.get_mut(tongue_entity).unwrap().rotation =
+            Quat::from_rotation_z(Vec2::Y.angle_between(to_mouse)) * player_rot.inverse();
     }
 }
 

@@ -222,32 +222,31 @@ fn my_cursor_system(
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut mouse_pos: ResMut<MousePos>,
 ) {
-    if let Some(cursor_moved) = cursor_evr.iter().next_back() {
-        let screen_pos = cursor_moved.position;
+    let Some(cursor_moved) = cursor_evr.iter().next_back() else { return };
+    let screen_pos = cursor_moved.position;
 
-        // get the camera info and transform
-        // assuming there is exactly one main camera entity, so query::single() is OK
-        let (camera, camera_transform) = camera.single();
+    // get the camera info and transform
+    // assuming there is exactly one main camera entity, so query::single() is OK
+    let (camera, camera_transform) = camera.single();
 
-        let wnd = windows.primary();
+    let wnd = windows.primary();
 
-        // get the size of the window
-        let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
+    // get the size of the window
+    let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
 
-        // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
-        let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
+    // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
+    let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
 
-        // matrix for undoing the projection and camera transform
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
+    // matrix for undoing the projection and camera transform
+    let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
 
-        // use it to convert ndc to world-space coordinates
-        let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
+    // use it to convert ndc to world-space coordinates
+    let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
 
-        // reduce it to a 2D value
-        let new_mouse_pos = world_pos.truncate();
+    // reduce it to a 2D value
+    let new_mouse_pos = world_pos.truncate();
 
-        if mouse_pos.0 != Some(new_mouse_pos) {
-            mouse_pos.0 = Some(new_mouse_pos);
-        }
+    if mouse_pos.0 != Some(new_mouse_pos) {
+        mouse_pos.0 = Some(new_mouse_pos);
     }
 }
