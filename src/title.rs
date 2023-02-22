@@ -74,7 +74,7 @@ fn setup_title(
         },
         ..default()
     };
-    commands.spawn(frog).insert(Title).insert(Frog);
+    commands.spawn((frog, Frog, Title));
 
     transform.single_mut().translation = Vec3::new(0., 0., 999.0);
 }
