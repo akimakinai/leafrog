@@ -3,12 +3,10 @@ use std::time::Duration;
 use crate::{GameState, InGameTag};
 
 use super::Rotation;
-use bevy::{prelude::*};
-use bevy_inspector_egui::{Inspectable, RegisterInspectable};
-use bevy_kira_audio::{Audio, AudioSource, AudioControl};
+use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::ConditionSet;
 use iyes_progress::prelude::AssetsLoading;
-use bevy_rapier2d::prelude::*;
 
 pub const LEAF_SIZE: f32 = 256.0;
 
@@ -16,7 +14,7 @@ pub struct LeafPlugin;
 
 impl Plugin for LeafPlugin {
     fn build(&self, app: &mut App) {
-        app.register_inspectable::<Leaf>();
+        app.register_type::<Leaf>();
 
         app.init_resource::<LeafAsset>().add_system_set(
             ConditionSet::new()
@@ -94,11 +92,10 @@ pub fn spawn_leaf<'w, 's, 'a>(
     e
 }
 
-#[derive(Component, Inspectable)]
+#[derive(Component, Reflect)]
 pub struct Leaf {
     pub decay: f32,
     pos: IVec2,
-    #[inspectable(ignore)]
     restore_timer: Option<Timer>,
 }
 
@@ -152,8 +149,10 @@ fn leaf_decay_system(
     });
 
     if leaf_drop {
-        audio.set_playback_rate(1.0 + (fastrand::f64() - 0.5) * 0.2);
-        audio.play(asset.audio_drop.clone());
+        audio.play_with_settings(
+            asset.audio_drop.clone(),
+            PlaybackSettings::ONCE.with_speed(1.0 + (fastrand::f32() - 0.5) * 0.2),
+        );
     }
 }
 

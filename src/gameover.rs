@@ -1,8 +1,7 @@
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, audio::AudioSink};
 use bevy_egui::EguiContext;
-use bevy_kira_audio::{AudioChannel, AudioControl};
 use iyes_loopless::prelude::*;
 
 use crate::{BGMTrack, GameAssets, GameState, InGameTag};
@@ -29,7 +28,8 @@ struct GameOverState {
 
 fn setup_gameover(
     mut commands: Commands,
-    audio: Res<AudioChannel<BGMTrack>>,
+    audio_sinks: Res<Assets<AudioSink>>,
+    mut bgm: ResMut<BGMTrack>,
     mut state: ResMut<GameOverState>,
     game_assets: Res<GameAssets>,
 ) {
@@ -60,7 +60,7 @@ fn setup_gameover(
         })
         .insert(GameOverTag);
 
-    audio.stop();
+    bgm.stop(&audio_sinks);
 }
 
 fn control(

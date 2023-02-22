@@ -1,7 +1,5 @@
 use bevy::{prelude::*, sprite::Anchor};
 use bevy_egui::EguiContext;
-use bevy_inspector_egui::{Inspectable, RegisterInspectable};
-use bevy_kira_audio::{Audio, AudioControl, AudioSource};
 use bevy_rapier2d::prelude::*;
 use bevy_tweening::*;
 use iyes_loopless::prelude::*;
@@ -24,7 +22,7 @@ impl Plugin for PlayerPlugin {
             .add_plugin(TweeningPlugin)
             .add_system(component_animator_system::<Handle<Image>>)
             .add_system(component_animator_system::<Tongue>)
-            .register_inspectable::<Tongue>()
+            .register_type::<Tongue>()
             .init_resource::<PlayerAssets>()
             .init_resource::<PlayerPos>()
             .add_event::<LandingEvent>()
@@ -106,7 +104,7 @@ fn startup(mut commands: Commands, assets: Res<PlayerAssets>, mut player_pos: Re
 #[derive(Debug, Default, Resource)]
 pub struct PlayerPos(pub IVec2);
 
-#[derive(Component, Default, Inspectable)]
+#[derive(Component, Default, Reflect)]
 pub struct Player {
     jumping: bool,
     next_pos: IVec2,
@@ -347,7 +345,7 @@ fn jump_system(
     }
 }
 
-#[derive(Component, Inspectable)]
+#[derive(Component, Reflect)]
 pub struct Tongue {
     length: f32,
     base: Entity,
@@ -465,9 +463,10 @@ fn tongue_kill_system(
         }
 
         if killed {
-            audio
-                .play(game_assets.kill_sound.clone())
-                .with_playback_rate(1.0 + (fastrand::f64() - 0.5) * 0.2);
+            audio.play_with_settings(
+                game_assets.kill_sound.clone(),
+                PlaybackSettings::ONCE.with_speed(1.0 + (fastrand::f32() - 0.5) * 0.2),
+            );
         }
     }
 }
@@ -564,9 +563,9 @@ fn detect_drown(
 
     let inter = get_intersections(&rapier_ctx, player_entity).collect::<Vec<_>>();
 
-    if inter.iter().any(|&e| leafs.get(e).unwrap().decay >= 1.0) {
-        commands.insert_resource(NextState(GameState::GameOver));
-    } else if inter.is_empty() && tran.is_empty() {
+    if inter.iter().any(|&e| leafs.get(e).unwrap().decay >= 1.0)
+        || (inter.is_empty() && tran.is_empty())
+    {
         commands.insert_resource(NextState(GameState::GameOver));
     }
 }

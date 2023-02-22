@@ -1,8 +1,7 @@
 #![allow(clippy::forget_non_drop)]
 
-use bevy::prelude::*;
-use bevy_inspector_egui::{Inspectable, RegisterInspectable, WorldInspectorPlugin};
-use bevy_kira_audio::{AudioApp, AudioChannel, AudioControl, AudioPlugin, AudioSource};
+use bevy::{audio::AudioSink, prelude::*};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use enemy::EnemyKillEvent;
 use iyes_loopless::prelude::*;
@@ -22,8 +21,16 @@ fn main() {
     App::new().add_plugin(GamePlugin).run();
 }
 
-#[derive(Resource)]
-struct BGMTrack;
+#[derive(Resource, Default)]
+struct BGMTrack(Option<Handle<AudioSink>>);
+
+impl BGMTrack {
+    fn stop(&mut self, sinks: &Assets<AudioSink>) {
+        let Some(handle) = self.0.take() else { return };
+        let Some(sink) = sinks.get(&handle) else { return };
+        sink.stop();
+    }
+}
 
 struct GamePlugin;
 
@@ -51,8 +58,7 @@ impl Plugin for GamePlugin {
         app.insert_resource(ClearColor(Color::CYAN))
             .add_plugins(DefaultPlugins)
             .add_plugin(bevy_egui::EguiPlugin)
-            .add_plugin(WorldInspectorPlugin::new())
-            .add_plugin(AudioPlugin)
+            .add_plugin(WorldInspectorPlugin)
             .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
             .add_loopless_state(GameState::AssetLoading)
             .add_plugin(
@@ -67,12 +73,11 @@ impl Plugin for GamePlugin {
             .add_plugin(leaf::LeafPlugin)
             .add_plugin(title::TitlePlugin)
             .add_plugin(gameover::GameOverPlugin)
-            .register_inspectable::<player::Player>()
-            .register_inspectable::<Rotation>()
+            .register_type::<player::Player>()
+            .register_type::<Rotation>()
             .add_startup_system(startup);
 
-        app.add_audio_channel::<BGMTrack>()
-            .add_system(bevy::window::close_on_esc)
+        app.add_system(bevy::window::close_on_esc)
             .init_resource::<MousePos>()
             .init_resource::<GameAssets>()
             .add_system(my_cursor_system)
@@ -118,7 +123,8 @@ struct Score(u32);
 fn ingame_startup(
     mut commands: Commands,
     leaf_asset: Res<LeafAsset>,
-    audio: Res<AudioChannel<BGMTrack>>,
+    audio: Res<Audio>,
+    audio_sinks: Res<Assets<AudioSink>>,
     assets: Res<GameAssets>,
 ) {
     info!("ingame_startup");
@@ -149,12 +155,7 @@ fn ingame_startup(
     }
 
     commands
-        .spawn((
-            Name::new("Leafs"),
-            GlobalTransform::default(),
-            Transform::default(),
-        ))
-        .insert(VisibilityBundle::default())
+        .spawn((Name::new("Leafs"), SpatialBundle::default()))
         .insert(InGameTag)
         .push_children(&leaves);
 
@@ -184,8 +185,9 @@ fn ingame_startup(
         .insert(Score(0))
         .insert(InGameTag);
 
-    audio.set_volume(0.2);
-    audio.play(assets.bgm.clone()).looped();
+    let handle =
+        audio.play_with_settings(assets.bgm.clone(), PlaybackSettings::LOOP.with_volume(0.2));
+    commands.insert_resource(BGMTrack(audio_sinks.get_handle(handle).into()));
 }
 
 fn score_system(mut kill_ev: EventReader<EnemyKillEvent>, mut q: Query<(&mut Text, &mut Score)>) {
@@ -199,7 +201,7 @@ fn score_system(mut kill_ev: EventReader<EnemyKillEvent>, mut q: Query<(&mut Tex
     }]
 }
 
-#[derive(Component, Default, Inspectable)]
+#[derive(Component, Default, Reflect)]
 pub struct Rotation(pub f32);
 
 fn rotation_system(mut q: Query<(&mut Transform, &Rotation), Changed<Rotation>>) {
@@ -232,7 +234,7 @@ fn my_cursor_system(
     let wnd = windows.primary();
 
     // get the size of the window
-    let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
+    let window_size = Vec2::new(wnd.width(), wnd.height());
 
     // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
     let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
