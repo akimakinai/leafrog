@@ -1,8 +1,7 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, audio::AudioSink};
-use bevy_egui::EguiContext;
-use iyes_loopless::prelude::*;
+use bevy_egui::EguiContexts;
 
 use crate::{BGMTrack, GameAssets, GameState, InGameTag};
 
@@ -11,10 +10,9 @@ pub struct GameOverPlugin;
 impl Plugin for GameOverPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GameOverState>()
-            .add_enter_system(GameState::GameOver, setup_gameover)
-            .add_exit_system(GameState::GameOver, despawn::<GameOverTag>)
-            .add_system(control.run_in_state(GameState::GameOver))
-            .add_exit_system(GameState::GameOver, despawn::<InGameTag>);
+            .add_system(setup_gameover.in_schedule(OnEnter(GameState::GameOver)))
+            .add_systems((despawn::<InGameTag>, despawn::<GameOverTag>).in_schedule(OnExit(GameState::GameOver)))
+            .add_system(control.in_set(OnUpdate(GameState::GameOver)));
     }
 }
 
@@ -33,12 +31,13 @@ fn setup_gameover(
     mut state: ResMut<GameOverState>,
     game_assets: Res<GameAssets>,
 ) {
+    info!("setup_gameover");
+
     state.cooldown = Timer::new(Duration::from_millis(800), default());
 
     commands
         .spawn(TextBundle {
             style: Style {
-                size: Size::new(Val::Percent(50.0), Val::Px(0.)),
                 margin: UiRect::all(Val::Auto),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
@@ -52,10 +51,7 @@ fn setup_gameover(
                     color: Color::SEA_GREEN,
                 },
             )
-            .with_alignment(TextAlignment {
-                vertical: VerticalAlign::Center,
-                horizontal: HorizontalAlign::Center,
-            }),
+            .with_alignment(TextAlignment::Center),
             ..default()
         })
         .insert(GameOverTag);
@@ -64,24 +60,24 @@ fn setup_gameover(
 }
 
 fn control(
-    mut commands: Commands,
     buttons: Res<Input<MouseButton>>,
     mut state: ResMut<GameOverState>,
     time: Res<Time>,
     keys: Res<Input<KeyCode>>,
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_contexts: EguiContexts,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     state.cooldown.tick(time.delta());
     if !state.cooldown.finished() {
         return;
     }
 
-    if egui_context.ctx_mut().is_pointer_over_area() {
+    if egui_contexts.ctx_mut().is_pointer_over_area() {
         return;
     }
 
     if buttons.just_released(MouseButton::Left) || keys.just_released(KeyCode::Space) {
-        commands.insert_resource(NextState(GameState::Title));
+        next_state.set(GameState::Title);
     }
 }
 

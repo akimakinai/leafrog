@@ -5,7 +5,6 @@ use crate::{GameState, InGameTag};
 use super::Rotation;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use iyes_loopless::prelude::ConditionSet;
 use iyes_progress::prelude::AssetsLoading;
 
 pub const LEAF_SIZE: f32 = 256.0;
@@ -16,14 +15,8 @@ impl Plugin for LeafPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Leaf>();
 
-        app.init_resource::<LeafAsset>().add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                // .with_system(set_texture_filters_to_nearest)
-                .with_system(leaf_decay_system)
-                .with_system(leaf_rotator)
-                .into(),
-        );
+        app.init_resource::<LeafAsset>()
+            .add_systems((leaf_decay_system, leaf_rotator).in_set(OnUpdate(GameState::InGame)));
     }
 }
 

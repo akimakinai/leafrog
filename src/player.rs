@@ -1,8 +1,7 @@
 use bevy::{prelude::*, sprite::Anchor};
-use bevy_egui::EguiContext;
+use bevy_egui::EguiContexts;
 use bevy_rapier2d::prelude::*;
 use bevy_tweening::*;
-use iyes_loopless::prelude::*;
 use iyes_progress::prelude::AssetsLoading;
 use leafwing_input_manager::prelude::*;
 use std::f32;
@@ -26,32 +25,33 @@ impl Plugin for PlayerPlugin {
             .init_resource::<PlayerAssets>()
             .init_resource::<PlayerPos>()
             .add_event::<LandingEvent>()
-            .add_enter_system(GameState::InGame, startup)
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::InGame)
-                    .with_system(camera_transform_system)
-                    .with_system(jump_system)
-                    .with_system(tongue_system)
-                    .with_system(tongue_kill_system)
-                    .with_system(detect_drown)
-                    .into(),
+            .add_system(startup.in_schedule(OnEnter(GameState::InGame)))
+            .add_systems(
+                (
+                    camera_transform_system,
+                    jump_system,
+                    tongue_system,
+                    tongue_kill_system,
+                    detect_drown,
+                )
+                    .in_set(OnUpdate(GameState::InGame)),
             )
-            .add_exit_system(
-                GameState::InGame,
-                |mut commands: Commands,
-                 player: Query<Entity, With<Player>>,
-                 camera: Query<Entity, With<MainCamera>>| {
-                    commands
-                        .entity(player.single())
-                        .remove::<Animator<Transform>>()
-                        .remove::<Animator<Handle<Image>>>();
-                    commands
-                        .entity(camera.single())
-                        .remove::<Animator<Transform>>();
-                },
-            );
+            .add_system(remove_animators.in_schedule(OnExit(GameState::InGame)));
     }
+}
+
+fn remove_animators(
+    mut commands: Commands,
+    player: Query<Entity, With<Player>>,
+    camera: Query<Entity, With<MainCamera>>,
+) {
+    commands
+        .entity(player.single())
+        .remove::<Animator<Transform>>()
+        .remove::<Animator<Handle<Image>>>();
+    commands
+        .entity(camera.single())
+        .remove::<Animator<Transform>>();
 }
 
 fn startup(mut commands: Commands, assets: Res<PlayerAssets>, mut player_pos: ResMut<PlayerPos>) {
@@ -378,7 +378,7 @@ impl TongueBundle {
             },
             rotation: default(),
             visibility: VisibilityBundle {
-                visibility: Visibility { is_visible: false },
+                visibility: Visibility::Hidden,
                 computed: default(),
             },
             transform: Transform::from_translation(Vec3::new(0., 0., -0.1)),
@@ -455,7 +455,7 @@ fn tongue_kill_system(
 ) {
     let (tongue, tongue_vis) = tongue.single();
 
-    if tongue.extending && tongue_vis.is_visible {
+    if tongue.extending && tongue_vis != Visibility::Hidden {
         let mut killed = false;
         for other in get_intersections(&rapier_ctx, tongue.tip) {
             ev_kill.send(EnemyKillEvent(other));
@@ -479,7 +479,7 @@ fn tongue_system(
     buttons: Res<Input<MouseButton>>,
     mouse_pos: Res<super::MousePos>,
     mut reader: EventReader<TweenCompleted>,
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_contexts: EguiContexts,
 ) {
     let (tongue_entity, mut tongue, g_tr, mut visibility) = tongue.single_mut();
 
@@ -507,17 +507,17 @@ fn tongue_system(
 
                 return;
             } else {
-                visibility.is_visible = false;
+                *visibility = Visibility::Hidden;
             }
         }
     }
 
-    if egui_context.ctx_mut().is_pointer_over_area() {
+    if egui_contexts.ctx_mut().is_pointer_over_area() {
         return;
     }
 
     if buttons.just_pressed(MouseButton::Left) && !player.jumping && !tongue.extending {
-        visibility.is_visible = true;
+        *visibility = Visibility::Inherited;
 
         let Some(mouse_pos) = mouse_pos.0 else { return };
 
@@ -552,8 +552,8 @@ fn detect_drown(
     q: Query<(Entity, &Player)>,
     leafs: Query<&Leaf>,
     rapier_ctx: Res<RapierContext>,
-    mut commands: Commands,
     tran: EventReader<StateTransitionEvent<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     let (player_entity, player) = q.single();
 
@@ -566,7 +566,7 @@ fn detect_drown(
     if inter.iter().any(|&e| leafs.get(e).unwrap().decay >= 1.0)
         || (inter.is_empty() && tran.is_empty())
     {
-        commands.insert_resource(NextState(GameState::GameOver));
+        next_state.set(GameState::GameOver);
     }
 }
 

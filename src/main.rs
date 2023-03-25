@@ -1,10 +1,9 @@
 #![allow(clippy::forget_non_drop)]
 
 use bevy::{audio::AudioSink, prelude::*};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+// use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use enemy::EnemyKillEvent;
-use iyes_loopless::prelude::*;
 use iyes_progress::{prelude::AssetsLoading, ProgressPlugin};
 use std::f32;
 
@@ -37,8 +36,9 @@ struct GamePlugin;
 #[derive(Component)]
 struct InGameTag;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, States)]
 enum GameState {
+    #[default]
     AssetLoading,
     Title,
     InGame,
@@ -58,9 +58,9 @@ impl Plugin for GamePlugin {
         app.insert_resource(ClearColor(Color::CYAN))
             .add_plugins(DefaultPlugins)
             .add_plugin(bevy_egui::EguiPlugin)
-            .add_plugin(WorldInspectorPlugin)
+            // .add_plugin(WorldInspectorPlugin)
             .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
-            .add_loopless_state(GameState::AssetLoading)
+            .add_state::<GameState>()
             .add_plugin(
                 ProgressPlugin::new(GameState::AssetLoading)
                     .continue_to(GameState::Title)
@@ -82,13 +82,8 @@ impl Plugin for GamePlugin {
             .init_resource::<GameAssets>()
             .add_system(my_cursor_system)
             .add_system(rotation_system)
-            .add_enter_system(GameState::InGame, ingame_startup)
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::InGame)
-                    .with_system(score_system)
-                    .into(),
-            );
+            .add_system(ingame_startup.in_schedule(OnEnter(GameState::InGame)))
+            .add_system(score_system.in_set(OnUpdate(GameState::InGame)));
     }
 }
 
@@ -112,8 +107,9 @@ impl FromWorld for GameAssets {
     }
 }
 
-fn startup(mut commands: Commands, mut windows: ResMut<Windows>) {
-    windows.primary_mut().set_resizable(false);
+fn startup(mut commands: Commands, mut windows: Query<&mut Window>) {
+    // TODO: resource
+    windows.single_mut().resizable = false;
     commands.spawn(Camera2dBundle::default()).insert(MainCamera);
 }
 
@@ -218,20 +214,20 @@ struct MousePos(Option<Vec2>);
 
 fn my_cursor_system(
     // need to get window dimensions
-    windows: Res<Windows>,
+    windows: Query<&Window>,
     mut cursor_evr: EventReader<CursorMoved>,
     // query to get camera transform
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut mouse_pos: ResMut<MousePos>,
 ) {
-    let Some(cursor_moved) = cursor_evr.iter().next_back() else { return };
+    let Some(cursor_moved) = cursor_evr.iter().last() else { return };
     let screen_pos = cursor_moved.position;
 
     // get the camera info and transform
     // assuming there is exactly one main camera entity, so query::single() is OK
     let (camera, camera_transform) = camera.single();
 
-    let wnd = windows.primary();
+    let wnd = windows.single();
 
     // get the size of the window
     let window_size = Vec2::new(wnd.width(), wnd.height());

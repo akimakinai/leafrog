@@ -1,6 +1,5 @@
 use bevy::{prelude::*, sprite::Anchor};
-use bevy_egui::EguiContext;
-use iyes_loopless::prelude::*;
+use bevy_egui::EguiContexts;
 
 use crate::{player::PlayerAssets, GameAssets, MainCamera};
 
@@ -10,15 +9,9 @@ pub struct TitlePlugin;
 
 impl Plugin for TitlePlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::Title, setup_title)
-            .add_exit_system(GameState::Title, despawn_title)
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::Title)
-                    .with_system(frog_scale)
-                    .with_system(control)
-                    .into(),
-            );
+        app.add_system(setup_title.in_schedule(OnEnter(GameState::Title)))
+            .add_system(despawn_title.in_schedule(OnExit(GameState::Title)))
+            .add_systems((frog_scale, control).in_set(OnUpdate(GameState::Title)));
     }
 }
 
@@ -56,10 +49,7 @@ fn setup_title(
                     color: Color::SEA_GREEN,
                 },
             )
-            .with_alignment(TextAlignment {
-                horizontal: HorizontalAlign::Center,
-                ..default()
-            }),
+            .with_alignment(TextAlignment::Center),
             ..default()
         })
         .insert(Title);
@@ -86,17 +76,17 @@ fn frog_scale(mut frog: Query<&mut Transform, With<Frog>>, time: Res<Time>) {
 }
 
 fn control(
-    mut commands: Commands,
     buttons: Res<Input<MouseButton>>,
     keys: Res<Input<KeyCode>>,
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_contexts: EguiContexts,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
-    if egui_context.ctx_mut().is_pointer_over_area() {
+    if egui_contexts.ctx_mut().is_pointer_over_area() {
         return;
     }
 
     if buttons.just_released(MouseButton::Left) || keys.just_released(KeyCode::Space) {
-        commands.insert_resource(NextState(GameState::InGame));
+        next_state.set(GameState::InGame);
     }
 }
 

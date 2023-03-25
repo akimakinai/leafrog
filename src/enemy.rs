@@ -1,6 +1,5 @@
 use crate::{InGameTag, Rotation};
 use bevy::prelude::*;
-use iyes_loopless::prelude::*;
 use iyes_progress::prelude::AssetsLoading;
 use bevy_rapier2d::prelude::*;
 use std::f32;
@@ -13,13 +12,9 @@ impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<EnemyAssets>()
             .add_event::<EnemyKillEvent>()
-            .add_enter_system(GameState::InGame, spawn_bugs)
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::InGame)
-                    .with_system(enemy_move_system)
-                    .with_system(enemy_reset)
-                    .into(),
+            .add_system(spawn_bugs.in_schedule(OnEnter(GameState::InGame)))
+            .add_systems(
+                (enemy_move_system, enemy_reset).in_set(OnUpdate(GameState::InGame))
             );
     }
 }
