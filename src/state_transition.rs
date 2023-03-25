@@ -35,6 +35,7 @@ impl<S: StateData> Plugin for StateTransitionDetectorPlugin<S> {
     fn build(&self, app: &mut App) {
         let stage = SystemStage::parallel().with_system(state_transition_detector::<S>);
 
+        // detector must run before NextState is removed in StateTransitionStage.
         app.add_event::<StateTransitionEvent<S>>().add_stage_before(
             iyes_loopless::state::StateTransitionStageLabel::from_type::<S>(),
             StateTransitionDetectorStage,
